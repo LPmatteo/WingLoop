@@ -68,3 +68,21 @@ sim_latest_results*
 Thumbs.db
 Miniconda3-latest-Linux-x86_64.sh
 Miniconda3-latest-Linux-x86_64.sh
+
+# Generated Python files
+__pycache__/
+*.pyc
+
+# Simulink generated files
+slprj/
+*.slxc
+
+# ASWING/WingLoop generated outputs
+WingLoop_Library/wingloop_testrun/aswing_geometry/input
+WingLoop_Library/wingloop_testrun/aswing_geometry/output
+WingLoop_Library/wingloop_testrun/aswing_geometry/sim_results.*
+WingLoop_Library/wingloop_testrun/aswing_geometry/plot.ps
+WingLoop_Library/wingloop_testrun/aswing_geometry/videos/
+
+# Windows metadata
+*Zone.Identifier*

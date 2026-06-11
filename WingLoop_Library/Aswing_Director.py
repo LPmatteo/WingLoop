@@ -341,33 +341,68 @@ class Aswing_Director:
         return ''.join(a), ''.join(b), time.time()-internal_start_time
 
     def send_writefile_command_and_receive(self, filename, custom_timer=None, append_or_overwrite=None):
+        """
+        Send the filename to ASWING, optionally answer append/overwrite,
+        and wait until the file has been written.
+
+        This implementation uses robust polling instead of relying only on inotify.
+        ASWING can write and close the file before the inotify watcher is installed;
+        in that case, the CLOSE_WRITE event is missed and the function would return
+        None. Polling the file size is slightly less elegant, but much more robust
+        for this workflow.
+        """
+
         internal_start_time = time.time()
-        tt = custom_timer
-        a, b = self.send_command_and_receive(filename, custom_timer=tt)
 
+        if custom_timer is not None:
+            tt = custom_timer
+        else:
+            tt = self.wait_time
+
+        # Send the filename requested by the ASWING write menu.
+        standard_output, error_output = self.send_command_and_receive(
+            filename,
+            custom_timer=tt
+        )
+
+        # If ASWING asks whether to append or overwrite, answer here.
         if append_or_overwrite:
-            c, d = self.send_command_and_receive(append_or_overwrite, custom_timer=tt)
-            a, b = a + c, b + d
+            stdout_extra, stderr_extra = self.send_command_and_receive(
+                append_or_overwrite,
+                custom_timer=tt
+            )
+            standard_output += stdout_extra
+            error_output += stderr_extra
 
-        timeout = 5  # seconds
+        timeout = 5.0
+        last_size = -1
+        stable_count = 0
+        stable_required_count = 3
 
-        # ── inotify path: wake up exactly when ASWING closes the file ──
-        watch_dir  = os.path.dirname(os.path.abspath(filename))
-        watch_name = os.path.basename(filename)
+        while time.time() - internal_start_time < timeout:
+            if os.path.exists(filename):
+                current_size = os.stat(filename).st_size
 
-        inotify = inotify_simple.INotify()
-        wd = inotify.add_watch(watch_dir, inotify_simple.flags.CLOSE_WRITE)
-        try:
-            deadline = time.time() + timeout
-            while time.time() < deadline:
-                ms_left = max(1, int((deadline - time.time()) * 1000))
-                for event in inotify.read(timeout=ms_left):
-                    if event.name == watch_name:
-                        if os.stat(filename).st_size > 0:
-                            return ''.join(a), ''.join(b), time.time() - internal_start_time
-        finally:
-            inotify.rm_watch(wd)
-            inotify.close()
+                if current_size > 0 and current_size == last_size:
+                    stable_count += 1
+                else:
+                    stable_count = 0
+
+                if stable_count >= stable_required_count:
+                    return (
+                        ''.join(standard_output),
+                        ''.join(error_output),
+                        time.time() - internal_start_time
+                    )
+
+                last_size = current_size
+
+            time.sleep(self.finished_writing_file_check_timestep)
+
+        raise TimeoutError(
+            f"ASWING did not finish writing '{filename}' within {timeout} seconds. "
+            f"Current directory: {os.getcwd()}"
+        )
 
 
     def quit_and_close_aswing(self):

@@ -138,35 +138,59 @@ class WingLoop:
         """
         pass
     
-    def Launch_ASWING(self,aswing_fullpath,aswing_alias,sim_directory,asw_filename,print_output,
+    def Launch_ASWING(self, aswing_fullpath, aswing_alias, sim_directory, asw_filename, print_output,
                       timer_text=0.000001,
                       finished_writing_check_timestep=0.001):
+        """Launch ASWING and make the ASWING case folder the active Python folder.
+
+        Args:
+            aswing_fullpath (str | None): Optional path to the ASWING executable.
+            aswing_alias (str): Command or alias used to launch ASWING, for example ``aswing``.
+            sim_directory (str): Directory containing the ASWING case files.
+                Relative files such as ``output``, ``input``, ``*.pnt``, ``*.set`` and
+                ``*.state`` are read/written from this folder.
+            asw_filename (str): Aircraft geometry file. It may be absolute or relative.
+            print_output (bool): If True, ASWING output is printed to the terminal.
+            timer_text (float): Default wait time used by Aswing_Director.
+            finished_writing_check_timestep (float): Polling time used while waiting
+                for ASWING to finish writing files.
         """
-        
-        aswing_path (str): path at the end of which there's the ASWING executable to use
-        sim_directory (str): local directory where the simulation files are
-        asw_filename (str): .asw filename to use
-        print_output (bool): if True, WingLoop data will be printed to the terminal
-        timer_text (float): timer used by default for the Aswing_Director functions
-        finished_writing_check_timestep (float): timer used to check for the last update on the size of the state file written by ASWING
-        """
-        # storing the variables to self.
-        self.sim_directory = sim_directory
-        self.print_output = print_output #used for the print output of the Aswing_Director
-        self.count = 0 #used to count the number of iterations performed
-        
-        # record the location of the initial path
+        self.sim_directory = os.path.abspath(sim_directory)
+        self.print_output = print_output
+        self.count = 0
+
+        # Save the caller folder, then force Python and ASWING to use the same
+        # working directory. This is important because WingLoop uses relative
+        # communication files called ``output`` and ``input``.
         self.initial_path = os.getcwd()
-        # change path to go to the sim_directory path
-        #os.chdir(os.path.join(self.initial_path,sim_directory))
-        # create an ASWING instance
-        self.ASW_handler = Aswing_Director(aswing_path=aswing_fullpath,aswing_alias= aswing_alias,
-                                           wait_time=timer_text, 
-                                           finished_writing_file_check_timestep=finished_writing_check_timestep)
-        self.ASW_handler.start_aswing(directory=sim_directory,filename=asw_filename,print_output=self.print_output)
 
+        if not os.path.isdir(self.sim_directory):
+            raise FileNotFoundError(f"ASWING simulation directory not found: {self.sim_directory}")
 
-            
+        if os.path.isabs(asw_filename):
+            asw_filename_for_check = asw_filename
+        else:
+            asw_filename_for_check = os.path.join(self.sim_directory, asw_filename)
+
+        if not os.path.isfile(asw_filename_for_check):
+            raise FileNotFoundError(f"ASWING geometry file not found: {asw_filename_for_check}")
+
+        os.chdir(self.sim_directory)
+        print(f"[WingLoop] Working directory set to: {os.getcwd()}")
+
+        self.ASW_handler = Aswing_Director(
+            aswing_path=aswing_fullpath,
+            aswing_alias=aswing_alias,
+            wait_time=timer_text,
+            finished_writing_file_check_timestep=finished_writing_check_timestep
+        )
+
+        self.ASW_handler.start_aswing(
+            directory=self.sim_directory,
+            filename=asw_filename,
+            print_output=self.print_output
+        )
+
     def Launch_WingLoop_Control(self,cntrl_directory, 
                                 cntrl_filename, 
                                 timestep,
@@ -252,8 +276,6 @@ class WingLoop:
         # creates the required control elements: ["F1","F2",...,"F20","E1","E2",...,"E20"]
         # unused control elements will be set to "None"
         control_elements = [f"F{i}" for i in range(1, 21)] + [f"E{i}" for i in range(1, 21)]
-        print("TESTLEO",control_elements)
-
         for ctrl in control_elements:
             if ctrl.startswith("F"):
                 num = ctrl[1:]
@@ -370,8 +392,15 @@ class WingLoop:
                 # There's no need for the "append_or_overwrite" option, since 
                 # the previous file disappeared, so there's nothing to append 
                 # "a" or overwrite "o"
-                stdout, stderr , time_taken= self.ASW_handler.send_writefile_command_and_receive(filename="output", 
-                                                                                                    custom_timer=custom_timer)
+                write_result = self.ASW_handler.send_writefile_command_and_receive(filename="output",
+                                                                                      custom_timer=custom_timer)
+                if write_result is None:
+                    raise RuntimeError(
+                        "ASWING did not confirm writing the output file. "
+                        f"Current Python directory: {os.getcwd()} | "
+                        f"ASWING simulation directory: {getattr(self, 'sim_directory', 'unknown')}"
+                    )
+                stdout, stderr, time_taken = write_result
 
             if state_file_write_options == "overwrite":
                 #deletes the previously written data from the output file, it 
@@ -396,9 +425,16 @@ class WingLoop:
                 """
                 # Now that we know the content of the previous input file was 
                 # deleted, we can write the next one inside it
-                stdout, stderr , time_taken= self.ASW_handler.send_writefile_command_and_receive(filename="output",  
-                                                                                                    custom_timer=custom_timer,
-                                                                                                    append_or_overwrite="O")
+                write_result = self.ASW_handler.send_writefile_command_and_receive(filename="output",
+                                                                                      custom_timer=custom_timer,
+                                                                                      append_or_overwrite="O")
+                if write_result is None:
+                    raise RuntimeError(
+                        "ASWING did not confirm writing the output file. "
+                        f"Current Python directory: {os.getcwd()} | "
+                        f"ASWING simulation directory: {getattr(self, 'sim_directory', 'unknown')}"
+                    )
+                stdout, stderr, time_taken = write_result
         starttime = time.time()
         # the following line updates the perceived information
         self.WingLoop_LogFile = read_aswing_file("output", 
@@ -551,7 +587,8 @@ class WingLoop:
         #    stdout, stderr = self.ASW_handler.send_command_and_receive(timeseries+".t",custom_timer=1)
         print("[WingLoop] writingtime",self.writingtime)
 
-        self.WingLoop_Liveplot.update(self.WingLoop_LogFile) #this will be the first plot if self.LivePlot = False
+        if hasattr(self, "WingLoop_Liveplot"):
+            self.WingLoop_Liveplot.update(self.WingLoop_LogFile)
         print("[WingLoop] Simulation Ended, Press Enter to continue")
         #input()
 
@@ -563,27 +600,36 @@ class WingLoop:
         if self.WingLoop_IsPlotting:
             self.WingLoop_Liveplot.export(custom_filename+".pdf")
 
-    def Closing_WingLoop(self,removefiles = True):
-        """Is in charge of closing the ASWING and ending the program
+    def Closing_WingLoop(self, removefiles=True):
+        """Close ASWING, clean communication files, and restore the caller folder.
 
         Args:
-            removefiles (bool, optional): If true, the input and output files for control are deleted. Defaults to True.
+            removefiles (bool, optional): If true, remove the ``output`` and
+                ``input`` communication files when they exist. Defaults to True.
         """
 
-        ### FINISHIING THE PROGRAM
         print("[WingLoop] Ending WingLoop...")
         time.sleep(0.5)
-        # removing the communication files
-        if removefiles:
-            os.remove("output")
-            os.remove("input")
-        if self.WingLoop_IsPlotting:
-            self.WingLoop_Liveplot.close()
 
-        stdout, stderr = self.ASW_handler.send_command_and_receive("\n")  # go back to main menu
-        # Quit Aswing
-        time.sleep(0.5)
-        self.ASW_handler.quit_and_close_aswing()
+        try:
+            if removefiles:
+                for filename in ("output", "input"):
+                    if os.path.exists(filename):
+                        os.remove(filename)
+
+            if getattr(self, "WingLoop_IsPlotting", False) and hasattr(self, "WingLoop_Liveplot"):
+                self.WingLoop_Liveplot.close()
+
+            if hasattr(self, "ASW_handler"):
+                self.ASW_handler.send_command_and_receive("\n")
+                time.sleep(0.5)
+                self.ASW_handler.quit_and_close_aswing()
+
+        finally:
+            if hasattr(self, "initial_path") and os.path.isdir(self.initial_path):
+                os.chdir(self.initial_path)
+                print(f"[WingLoop] Working directory restored to: {os.getcwd()}")
+
         print("[WingLoop] Closed WingLoop correctly!")
 
 
