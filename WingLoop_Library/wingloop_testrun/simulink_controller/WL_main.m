@@ -1,42 +1,65 @@
-clc; close all;
-clear all
+clc;
+close all;
+clear;
 
+%% ========================================================================
+%  USER CONFIGURATION
+%  Change only this section when using a different aircraft, trim point,
+%  or simulation setup.
+%  ========================================================================
 
 %% --- Time Configuration ---
-T_sim      = 10;    % Total simulation time [s]
+T_sim      = 10;     % Total simulation time [s]
 Dt_asw     = 0.1;    % ASWING step size [s]
 Dt_sim     = 0.1;    % Simulink solver step size [s]
 Ts_control = 0.1;    % Controller sample time [s]
 tau        = 0.1;    % Filter time constant
-t_int      = 0.5;    
+t_int      = 0.5;    % Integral time constant / user-defined parameter
 
-fprintf('\n--- TIME CONFIGURATION ---\n');
-fprintf('T_sim: %g s | Dt_ASWING: %g s | Ts_Control: %g s\n', T_sim, Dt_asw, Ts_control);
+%% --- ASWING Case Files ---
+% Geometry file must be located in:
+% WingLoop/WingLoop_Library/wingloop_testrun/Geometries/
+ASW_FILE = 't_tail_HALE.asw';
 
-% Python interface setup
-python_path = '/home/lpmatteo/software/WingLoop/WingLoop_Library/wingloop_testrun/';
-json_path   = fullfile(python_path, 'sim_config.json');
-config_data = struct('T_sim', T_sim, 'Dt_asw', Dt_asw);
+% These files must be located in:
+% WingLoop/WingLoop_Library/wingloop_testrun/aswing_geometry/
+PNT_FILE   = 't_tail_HALE.pnt';
+SET_FILE   = 't_tail_HALE.set';
+STATE_FILE = 't_tail_HALE.state';
+GUST_FILE  = 'gust_H40.gust';
 
-fid = fopen(json_path, 'w');
-fprintf(fid, '%s', jsonencode(config_data));
-fclose(fid);
+%% --- Aircraft / Model Dimensions ---
+% Change these values when using a different aircraft model.
+ROM.n_modal      = 91;    % Number of modal states
+FullModel.n_orig = 1882;  % Number of original physical states
+FullModel.n_in   = 6;     % Number of control inputs
 
-% Paths
-addpath('/home/lpmatteo/software/WingLoop/WingLoop_Library/wingloop_testrun/simulink_controller/');
-
-%% Block parameters : change depending on geometry used
-
-
-ROM.n_modal = 92 ;  %only if ROM is included
-FullModel.n_orig = 1882 ;   %Geometry
-FullModel.n_in = 6 ;  %Geometry
-
-
-% Change depending on trimming point used
-F2ref = -6.63806152; 
-F3ref = 4.54747351E-12; 
+%% --- Trim Control Inputs ---
+% Change these values when using a different trim point.
+F2ref = -6.63806152;
+F3ref = 4.54747351E-12;
 E2ref = 23.6475887;
-u_trim = [0, F2ref, F3ref, 0, E2ref, E2ref]; 
 
-sim('WL_test.slx')
+u_trim = [0, F2ref, F3ref, 0, E2ref, E2ref];
+
+%% --- Simulink Model ---
+model_name = 'WL_test';
+model_file = 'WL_test.slx';
+
+%% ========================================================================
+%  AUTOMATIC SETUP AND SIMULATION
+%  Do not modify this section unless you are changing the WingLoop interface.
+%  ========================================================================
+
+run_wingloop_simulink_setup( ...
+    T_sim, Dt_asw, Dt_sim, Ts_control, tau, t_int, ...
+    ASW_FILE, PNT_FILE, SET_FILE, STATE_FILE, GUST_FILE, ...
+    ROM, FullModel, u_trim, ...
+    model_name, model_file ...
+);
+
+sim(model_file);
+
+
+
+

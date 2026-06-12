@@ -206,9 +206,9 @@ WingLoop/WingLoop_Library/wingloop_testrun/controller_wingloop.py
 
 WingLoop does not automatically generate aircraft trim conditions, reduced-order models, or ASWING initialization files.
 
-To use a different aircraft, the user must manually provide the corresponding ASWING files and update the aircraft-specific parameters.
+To use a different aircraft, the user must manually provide the corresponding ASWING files and update the aircraft-specific parameters used by the Simulink model.
 
-### Step 1 — Replace the Geometry File
+### Step 1 — Place the ASWING Geometry File
 
 Place the aircraft geometry file:
 
@@ -228,9 +228,11 @@ For the provided example:
 WingLoop/WingLoop_Library/wingloop_testrun/Geometries/t_tail_HALE.asw
 ```
 
-### Step 2 — Replace the Initialization Files
+Only the `.asw` geometry file should be placed in `Geometries/`.
 
-Place the ASWING initialization files:
+### Step 2 — Place the ASWING Initialization Files
+
+Place the three ASWING initialization files:
 
 ```text
 aircraft.pnt
@@ -264,25 +266,60 @@ For example:
 WingLoop/WingLoop_Library/wingloop_testrun/aswing_geometry/gust_H40.gust
 ```
 
-### Step 3 — Update Aircraft-Specific Parameters
+### Step 3 — Select the Files in the MATLAB Main Script
 
-Open:
+Open the MATLAB main script in:
 
 ```text
-WingLoop/WingLoop_Library/wingloop_testrun/simulink_controller/WL_main.m
+WingLoop/WingLoop_Library/wingloop_testrun/simulink_controller/
 ```
 
-and update the aircraft-dependent parameters:
+and select the ASWING files to be used by the simulation:
 
 ```matlab
-ROM.n_modal      = 92;
+ASW_FILE = 't_tail_HALE.asw';
 
-FullModel.n_orig = 1882;
-FullModel.n_in   = 6;
+PNT_FILE   = 't_tail_HALE.pnt';
+SET_FILE   = 't_tail_HALE.set';
+STATE_FILE = 't_tail_HALE.state';
+GUST_FILE  = 'gust_H40.gust';
+```
 
+These file names are written automatically to `sim_config.json`, which is then read by `controller_wingloop.py`.
+
+The Python launcher should not be modified when changing aircraft.
+
+### Step 4 — Update the Aircraft Dimensions
+
+In the same MATLAB main script, update the aircraft-dependent dimensions:
+
+```matlab
+ROM.n_modal      = 91;    % Number of modal states, if a ROM is used
+
+FullModel.n_orig = 1882;  % Number of original physical states
+FullModel.n_in   = 6;     % Number of control inputs
+```
+
+These values depend on the selected aircraft geometry and on the state/input definition used by the Simulink model.
+
+The dimensions used by `AswingPlant.m` are computed automatically from:
+
+```matlab
+NumModalStates    = ROM.n_modal;
+NumPhysicalStates = FullModel.n_orig + FullModel.n_in;
+```
+
+Therefore, `NumModalStates` and `NumPhysicalStates` should not be edited manually inside `AswingPlant.m`.
+
+### Step 5 — Update the Trim Inputs
+
+The trim input vector must match the trimming point contained in the selected `.state` file.
+
+For the provided example:
+
+```matlab
 F2ref = -6.63806152;
 F3ref = 4.54747351E-12;
-
 E2ref = 23.6475887;
 
 u_trim = [ ...
@@ -295,18 +332,9 @@ u_trim = [ ...
 ];
 ```
 
-These values are aircraft-specific and must be replaced with the values corresponding to the new aircraft model.
+When using a different trim point, the user must update `F2ref`, `F3ref`, `E2ref`, and `u_trim` accordingly.
 
-### Automatic State Dimensions
-
-The dimensions used by `AswingPlant.m` are computed automatically from:
-
-```matlab
-NumModalStates    = ROM.n_modal;
-NumPhysicalStates = FullModel.n_orig + FullModel.n_in;
-```
-
-Therefore, `NumModalStates` and `NumPhysicalStates` should not be edited manually inside `AswingPlant.m`.
+The order of `u_trim` must be consistent with the control-input order expected by the Simulink model and by the WingLoop TCP bridge.
 
 ---
 

@@ -30,14 +30,34 @@ def main():
     Dt = 0.1
     T_sim = 100.0
 
+    ASW_FILE_NAME = "t_tail_HALE.asw"
+    PNT_FILE = "t_tail_HALE.pnt"
+    SET_FILE = "t_tail_HALE.set"
+    STATE_FILE = "t_tail_HALE.state"
+    GUST_FILE = "gust_H40.gust"
+
     # MATLAB/Simulink can write this file before launching Python.
     # If present, it overrides the default parameters above.
     if os.path.exists("sim_config.json"):
         with open("sim_config.json", "r", encoding="utf-8") as f:
             config = json.load(f)
+
             Dt = config.get("Dt_asw", Dt)
             T_sim = config.get("T_sim", T_sim)
+
+            ASW_FILE_NAME = config.get("ASW_FILE", ASW_FILE_NAME)
+            PNT_FILE = config.get("PNT_FILE", PNT_FILE)
+            SET_FILE = config.get("SET_FILE", SET_FILE)
+            STATE_FILE = config.get("STATE_FILE", STATE_FILE)
+            GUST_FILE = config.get("GUST_FILE", GUST_FILE)
+
             print(f"[WingLoop] Parameters loaded from sim_config.json: T_sim={T_sim}s | Dt={Dt}s")
+            print("[WingLoop] ASWING case loaded from sim_config.json:")
+            print(f"  ASW_FILE   = {ASW_FILE_NAME}")
+            print(f"  PNT_FILE   = {PNT_FILE}")
+            print(f"  SET_FILE   = {SET_FILE}")
+            print(f"  STATE_FILE = {STATE_FILE}")
+            print(f"  GUST_FILE  = {GUST_FILE}")
 
     K = 1
     N = int(T_sim / Dt) + 2
@@ -119,7 +139,7 @@ def main():
     geometry_dir = os.path.join(base_dir, "Geometries")
 
     # Absolute path used by Python for checks and optional video generation.
-    aswing_geometry_file_abs = os.path.join(geometry_dir, "t_tail_HALE.asw")
+    aswing_geometry_file_abs = os.path.join(geometry_dir, ASW_FILE_NAME)
 
     # Short relative path passed to ASWING.
     # Aswing_Director changes directory to aswing_working_dir before launching ASWING,
@@ -129,10 +149,10 @@ def main():
         start=aswing_working_dir,
     )
 
-    point_file = "t_tail_HALE.pnt"
-    settings_file = "t_tail_HALE.set"
-    state_file = "t_tail_HALE.state"
-    gust_file = "gust_H40.gust"
+    point_file = PNT_FILE
+    settings_file = SET_FILE
+    state_file = STATE_FILE
+    gust_file = GUST_FILE
 
     print("[WingLoop] ASWING working directory:", aswing_working_dir)
     print("[WingLoop] ASWING geometry absolute path:", aswing_geometry_file_abs)
