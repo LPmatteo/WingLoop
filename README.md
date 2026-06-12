@@ -158,7 +158,7 @@ source ~/.bashrc
 
 ## Running the Simulink Example
 
-Open MATLAB and run:
+Open MATLAB and run the user-facing main script:
 
 ```matlab
 WL_main
@@ -170,7 +170,7 @@ from:
 WingLoop/WingLoop_Library/wingloop_testrun/simulink_controller/
 ```
 
-`WL_main.m` configures the simulation parameters and opens the Simulink model.
+`WL_main.m` is the main entry point of the workflow. It configures the simulation parameters, selects the ASWING files, sets the model dimensions and trim inputs, writes `sim_config.json`, configures `AswingPlant.m`, and starts the Simulink simulation.
 
 When the model is ready, press **Run** in Simulink.
 
@@ -194,11 +194,21 @@ The Python-side TCP bridge is:
 WingLoop/WingLoop_Library/wingloop_testrun/simulink_controller/Bridge_Simulink.py
 ```
 
-The main launcher is:
+The user-facing main script is:
+
+```text
+WingLoop/WingLoop_Library/wingloop_testrun/simulink_controller/WL_main.m
+```
+
+This is the file where the user sets the simulation time, ASWING case files, model dimensions, trim inputs, and Simulink model name.
+
+The Python script:
 
 ```text
 WingLoop/WingLoop_Library/wingloop_testrun/controller_wingloop.py
 ```
+
+is launched automatically by the Simulink workflow through WSL and should normally not be edited by the user.
 
 ---
 
@@ -268,10 +278,10 @@ WingLoop/WingLoop_Library/wingloop_testrun/aswing_geometry/gust_H40.gust
 
 ### Step 3 — Select the Files in the MATLAB Main Script
 
-Open the MATLAB main script in:
+Open the user-facing main script:
 
 ```text
-WingLoop/WingLoop_Library/wingloop_testrun/simulink_controller/
+WingLoop/WingLoop_Library/wingloop_testrun/simulink_controller/WL_main.m
 ```
 
 and select the ASWING files to be used by the simulation:
