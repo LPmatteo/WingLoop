@@ -5,7 +5,7 @@ classdef AswingPlant < matlab.System
         NumModalStates    = 91
         NumPhysicalStates = 1888
         ConnectRetries    = 60
-        SocketTimeout     = 300
+        SocketTimeout     = 60
     end
 
     properties (Access = private)

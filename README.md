@@ -79,7 +79,7 @@ WingLoop/
         ├── sim_config.json
         ├── python_inputs.txt
         │
-        ├── Geometries/
+        ├── aswing_geometry/
         │   └── t_tail_HALE.asw
         │
         ├── aswing_geometry/
@@ -88,9 +88,9 @@ WingLoop/
         │   ├── t_tail_HALE.state
         │   └── gust_H40.gust
         │
-        └── simulink_controller/
-            ├── WL_main.m
-            ├── WL_main_simulink.slx
+        └── simulink_controller_2/
+            ├── WingLoop_Simulink_Testrun.m
+            ├── WingLoop_Simulink_Testrun_simulink.slx
             ├── AswingPlant.m
             └── Bridge_Simulink.py
 ```
@@ -161,16 +161,16 @@ source ~/.bashrc
 Open MATLAB and run the user-facing main script:
 
 ```matlab
-WL_main
+WingLoop_Simulink_Testrun
 ```
 
 from:
 
 ```text
-WingLoop/WingLoop_Library/wingloop_testrun/simulink_controller/
+WingLoop/WingLoop_Library/wingloop_testrun/simulink_controller_2/
 ```
 
-`WL_main.m` is the main entry point of the workflow. It configures the simulation parameters, selects the ASWING files, sets the model dimensions and trim inputs, writes `sim_config.json`, configures `AswingPlant.m`, and starts the Simulink simulation.
+`WingLoop_Simulink_Testrun.m` is the main entry point of the workflow. It configures the simulation parameters, selects the ASWING files, sets the model dimensions and trim inputs, writes `sim_config.json`, configures `AswingPlant.m`, and starts the Simulink simulation.
 
 When the model is ready, press **Run** in Simulink.
 
@@ -183,7 +183,7 @@ The Simulink model automatically launches the Python WingLoop server through WSL
 The Simulink interface is based on:
 
 ```text
-WingLoop/WingLoop_Library/wingloop_testrun/simulink_controller/AswingPlant.m
+WingLoop/WingLoop_Library/MatlabUtilities/AswingPlant.m
 ```
 
 `AswingPlant.m` is a MATLAB System block that communicates with Python through TCP.
@@ -191,13 +191,13 @@ WingLoop/WingLoop_Library/wingloop_testrun/simulink_controller/AswingPlant.m
 The Python-side TCP bridge is:
 
 ```text
-WingLoop/WingLoop_Library/wingloop_testrun/simulink_controller/Bridge_Simulink.py
+WingLoop/WingLoop_Library/MatlabUtilities/Bridge_Simulink.py
 ```
 
 The user-facing main script is:
 
 ```text
-WingLoop/WingLoop_Library/wingloop_testrun/simulink_controller/WL_main.m
+WingLoop/WingLoop_Library/wingloop_testrun/simulink_controller_2/WingLoop_Simulink_Testrun.m
 ```
 
 This is the file where the user sets the simulation time, ASWING case files, model dimensions, trim inputs, and Simulink model name.
@@ -205,7 +205,7 @@ This is the file where the user sets the simulation time, ASWING case files, mod
 The Python script:
 
 ```text
-WingLoop/WingLoop_Library/wingloop_testrun/controller_wingloop.py
+WingLoop/WingLoop_Library/MatlabUtilities/controller_wingloop.py
 ```
 
 is launched automatically by the Simulink workflow through WSL and should normally not be edited by the user.
@@ -229,16 +229,16 @@ aircraft.asw
 inside:
 
 ```text
-WingLoop/WingLoop_Library/wingloop_testrun/Geometries/
+WingLoop/WingLoop_Library/wingloop_testrun/aswing_geometry/
 ```
 
 For the provided example:
 
 ```text
-WingLoop/WingLoop_Library/wingloop_testrun/Geometries/t_tail_HALE.asw
+WingLoop/WingLoop_Library/wingloop_testrun/aswing_geometry/t_tail_HALE.asw
 ```
 
-Only the `.asw` geometry file should be placed in `Geometries/`.
+Only the `.asw` geometry file should be placed in `aswing_geometry/`.
 
 ### Step 2 — Place the ASWING Initialization Files
 
@@ -281,7 +281,7 @@ WingLoop/WingLoop_Library/wingloop_testrun/aswing_geometry/gust_H40.gust
 Open the user-facing main script:
 
 ```text
-WingLoop/WingLoop_Library/wingloop_testrun/simulink_controller/WL_main.m
+WingLoop/WingLoop_Library/wingloop_testrun/simulink_controller_2/WingLoop_Simulink_Testrun.m
 ```
 
 and select the ASWING files to be used by the simulation:
@@ -353,7 +353,7 @@ The order of `u_trim` must be consistent with the control-input order expected b
 The Python launcher uses two different folders:
 
 ```text
-Geometries/
+aswing_geometry/
 ```
 
 for the `.asw` geometry file, and:
@@ -417,7 +417,7 @@ Check that the `aswing` command works from WSL.
 Check that:
 
 - `.pnt`, `.set`, and `.state` files are in `aswing_geometry/`
-- the `.asw` file is in `Geometries/`
+- the `.asw` file is in `aswing_geometry/`
 - `Aswing_Director.py` and `WingLoop.py` use the corrected file-write synchronization logic
 - ASWING is launched from the correct working directory
 

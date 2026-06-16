@@ -1,9 +1,5 @@
 function WL_init_callback()
 %WL_INIT_CALLBACK Prepare and start the WingLoop Python side from Simulink.
-%
-% The repository path must not be hardcoded in WL_test.slx. WL_main sets
-% WL_TestrunPath before starting the simulation; if the model is opened
-% directly, this function falls back to the model file location.
 
     fprintf('[Simulink] Preparing simulation...\n');
 
@@ -19,8 +15,16 @@ function WL_init_callback()
         scelta_video = 'No';
     end
 
-    percorso = resolve_wingloop_testrun_path();
-    file_inputs = fullfile(percorso, 'python_inputs.txt');
+    simulink_case_path = resolve_base_variable_or_model_path( ...
+        'WL_SimulinkCasePath');
+    matlab_utilities_path = resolve_matlab_utilities_path(simulink_case_path);
+    config_folder = resolve_config_folder(simulink_case_path);
+
+    if exist(config_folder, 'dir') ~= 7
+        mkdir(config_folder);
+    end
+
+    file_inputs = fullfile(config_folder, 'python_inputs.txt');
 
     fid = fopen(file_inputs, 'w');
     if fid < 0
@@ -44,24 +48,63 @@ function WL_init_callback()
     clear cleanup_obj;
 
     conda_env = resolve_conda_env();
-    start_python_server(percorso, conda_env);
+    start_python_server(simulink_case_path, matlab_utilities_path, ...
+        config_folder, conda_env);
 end
 
 
-function percorso = resolve_wingloop_testrun_path()
-    if evalin('base', 'exist(''WL_TestrunPath'', ''var'')')
-        percorso = evalin('base', 'WL_TestrunPath');
+function path_value = resolve_base_variable_or_model_path(variable_name)
+    if evalin('base', sprintf('exist(''%s'', ''var'')', variable_name))
+        path_value = evalin('base', variable_name);
+        path_value = char(path_value);
         return;
     end
 
     model_file = get_param(bdroot, 'FileName');
     if isempty(model_file)
-        error(['WL_TestrunPath is not defined and the Simulink model has ' ...
-            'no file path. Start the simulation from WL_main.m.']);
+        error(['%s is not defined and the Simulink model has no file path. ' ...
+            'Start the simulation from WingLoop_Simulink_Testrun.m.'], ...
+            variable_name);
     end
 
-    simulink_controller_path = fileparts(model_file);
-    percorso = fileparts(simulink_controller_path);
+    path_value = fileparts(model_file);
+end
+
+
+function matlab_utilities_path = resolve_matlab_utilities_path(simulink_case_path)
+    if evalin('base', 'exist(''WL_MatlabUtilitiesPath'', ''var'')')
+        matlab_utilities_path = evalin('base', 'WL_MatlabUtilitiesPath');
+        matlab_utilities_path = char(matlab_utilities_path);
+        return;
+    end
+
+    probe = simulink_case_path;
+    while true
+        candidate = fullfile(probe, 'MatlabUtilities');
+        if exist(candidate, 'dir') == 7
+            matlab_utilities_path = candidate;
+            return;
+        end
+
+        parent = fileparts(probe);
+        if strcmp(parent, probe)
+            break;
+        end
+        probe = parent;
+    end
+
+    error(['Unable to locate MatlabUtilities. Start the simulation from ' ...
+        'WingLoop_Simulink_Testrun.m or set wingloop_library_path there.']);
+end
+
+
+function config_folder = resolve_config_folder(simulink_case_path)
+    if evalin('base', 'exist(''WL_ConfigFolder'', ''var'')')
+        config_folder = evalin('base', 'WL_ConfigFolder');
+        config_folder = char(config_folder);
+    else
+        config_folder = fullfile(simulink_case_path, 'config');
+    end
 end
 
 
@@ -81,21 +124,33 @@ function conda_env = resolve_conda_env()
 end
 
 
-function start_python_server(percorso, conda_env)
-    log_file = fullfile(percorso, 'wingloop_python_server.log');
+function start_python_server(simulink_case_path, matlab_utilities_path, ...
+    config_folder, conda_env)
+
+    log_file = fullfile(simulink_case_path, 'wingloop_python_server.log');
+    config_file = fullfile(config_folder, 'sim_config.json');
+    input_file = fullfile(config_folder, 'python_inputs.txt');
+    controller_file = fullfile(matlab_utilities_path, 'controller_wingloop.py');
+
     fprintf('[Simulink] Python server log: %s\n', log_file);
 
     if ispc
-        percorso_wsl = windows_path_to_wsl_path(percorso);
+        case_path_wsl = windows_path_to_wsl_path(simulink_case_path);
         log_file_wsl = windows_path_to_wsl_path(log_file);
-        launch_cmd = build_python_launch_command(percorso_wsl, conda_env);
+        config_file_wsl = windows_path_to_wsl_path(config_file);
+        input_file_wsl = windows_path_to_wsl_path(input_file);
+        controller_file_wsl = windows_path_to_wsl_path(controller_file);
+
+        launch_cmd = build_python_launch_command(case_path_wsl, ...
+            controller_file_wsl, config_file_wsl, input_file_wsl, conda_env);
         launch_cmd = sprintf('%s > %s 2>&1; exec bash', ...
             launch_cmd, shell_quote_for_bash(log_file_wsl));
         cmd_wsl = sprintf('start "WingLoop Python Server" wsl -e bash -lc %s', ...
             shell_quote_for_cmd(launch_cmd));
         system(cmd_wsl);
     else
-        launch_cmd = build_python_launch_command(percorso, conda_env);
+        launch_cmd = build_python_launch_command(simulink_case_path, ...
+            controller_file, config_file, input_file, conda_env);
         cmd_unix = sprintf('bash -lc %s > %s 2>&1 &', ...
             shell_quote_for_bash(launch_cmd), shell_quote_for_bash(log_file));
         system(cmd_unix);
@@ -103,7 +158,9 @@ function start_python_server(percorso, conda_env)
 end
 
 
-function launch_cmd = build_python_launch_command(percorso, conda_env)
+function launch_cmd = build_python_launch_command(working_path, ...
+    controller_file, config_file, input_file, conda_env)
+
     launch_cmd = sprintf([ ...
         'cd %s && ' ...
         'echo "[WingLoop] Starting Python server from $(pwd)" && ' ...
@@ -122,10 +179,13 @@ function launch_cmd = build_python_launch_command(percorso, conda_env)
         'fi && ' ...
         '. "$CONDA_BASE/etc/profile.d/conda.sh" && ' ...
         'conda activate %s && ' ...
-        'python3 -u controller_wingloop.py < python_inputs.txt'], ...
-        shell_quote_for_bash(percorso), ...
+        'WINGLOOP_SIM_CONFIG=%s python3 -u %s < %s'], ...
+        shell_quote_for_bash(working_path), ...
         shell_quote_for_bash(conda_env), ...
-        shell_quote_for_bash(conda_env));
+        shell_quote_for_bash(conda_env), ...
+        shell_quote_for_bash(config_file), ...
+        shell_quote_for_bash(controller_file), ...
+        shell_quote_for_bash(input_file));
 end
 
 

@@ -1,7 +1,0 @@
- 5	! 1-cosine gust, per EASA CS-25.341
--30.0	! horizontal distance over x until beginning of gust
- 0.0	! coefficient for y slope (shear wall direction)
- 40.00	! gradient length H (start to maximum)
- 4.6511	! Wmax, vertical gust amplitude (Uds)
- 0.0	! useless
- 0.0	! useless

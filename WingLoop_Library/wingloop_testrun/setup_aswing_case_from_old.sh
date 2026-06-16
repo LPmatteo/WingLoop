@@ -4,8 +4,8 @@ set -euo pipefail
 # Run from:
 #   WingLoop_Library/wingloop_testrun/
 #
-# It creates:
-#   aswing_cases/t_tail_HALE/
+# It creates or refreshes:
+#   aswing_geometry/
 #
 # The folder contains:
 #   t_tail_HALE.asw
@@ -14,15 +14,24 @@ set -euo pipefail
 #   t_tail_HALE.state
 #   gust_H40.gust
 
-DEST_DIR="$(pwd)/aswing_cases/t_tail_HALE"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEST_DIR="${WINGLOOP_ASWING_CASE_DEST:-$SCRIPT_DIR/aswing_geometry}"
 
-OLD_ASWING_WORK_DIR="/home/lpmatteo/Internship_INCARBONE_2026/LQR_first_controller_study/LQR_WL_simulation/aswing_geometry"
-OLD_GEOMETRY_FILE="/home/lpmatteo/Internship_INCARBONE_2026/Geometries/t_tail_HALE.asw"
+OLD_ASWING_WORK_DIR="${OLD_ASWING_WORK_DIR:-}"
+OLD_GEOMETRY_FILE="${OLD_GEOMETRY_FILE:-}"
+
+if [[ -z "$OLD_ASWING_WORK_DIR" || -z "$OLD_GEOMETRY_FILE" ]]; then
+    echo "[setup] ERROR: set OLD_ASWING_WORK_DIR and OLD_GEOMETRY_FILE first."
+    echo "[setup] Example:"
+    echo "        OLD_ASWING_WORK_DIR=/path/to/aswing_geometry \\"
+    echo "        OLD_GEOMETRY_FILE=/path/to/t_tail_HALE.asw \\"
+    echo "        ./setup_aswing_case_from_old.sh"
+    exit 2
+fi
 
 echo "[setup] Destination:"
 echo "$DEST_DIR"
 
-rm -rf "$DEST_DIR"
 mkdir -p "$DEST_DIR"
 
 echo "[setup] Copying old ASWING working directory..."
