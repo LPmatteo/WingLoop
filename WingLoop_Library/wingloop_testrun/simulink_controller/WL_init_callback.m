@@ -5,16 +5,16 @@ function WL_init_callback()
 % WL_TestrunPath before starting the simulation; if the model is opened
 % directly, this function falls back to the model file location.
 
-    fprintf('[Simulink] Preparazione simulazione...\n');
+    fprintf('[Simulink] Preparing simulation...\n');
 
-    scelta_gust = questdlg('Vuoi includere la gust?', ...
-        'Configurazione Raffica', 'Si', 'No', 'No');
+    scelta_gust = questdlg('Do you want to include the gust?', ...
+        'Gust Configuration', 'Yes', 'No', 'No');
     if isempty(scelta_gust)
         scelta_gust = 'No';
     end
 
-    scelta_video = questdlg('Vuoi generare il video MP4 a fine simulazione?', ...
-        'Configurazione Video', 'Si', 'No', 'No');
+    scelta_video = questdlg('Do you want to generate a video after the simulation?', ...
+        'Video Configuration', 'Yes', 'No', 'No');
     if isempty(scelta_video)
         scelta_video = 'No';
     end
@@ -29,14 +29,14 @@ function WL_init_callback()
     cleanup_obj = onCleanup(@() fclose(fid));
 
     fprintf(fid, '1\n'); % Controller choice: 1 (LQI).
-    if strcmp(scelta_gust, 'Si')
-        fprintf(fid, 's\n');
+    if strcmp(scelta_gust, 'Yes')
+        fprintf(fid, 'y\n');
     else
         fprintf(fid, 'n\n');
     end
 
-    if strcmp(scelta_video, 'Si')
-        fprintf(fid, 's\ngif\nmedium\nY\n');
+    if strcmp(scelta_video, 'Yes')
+        fprintf(fid, 'y\ngif\nmedium\nY\n');
     else
         fprintf(fid, 'n\n');
     end
