@@ -1,12 +1,17 @@
 import json
 import os
 import shutil
+import sys
 import time
 
-from WingLoop_Library import (
-    WingLoop,
-    VideoPlot_Generate_postscript_file,
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+
+from WingLoop_Library import WingLoop
+from WingLoop_Library.ASW_Helpers import (
     Generate_Analysis_Videos,
+    VideoPlot_Generate_postscript_file,
 )
 
 
