@@ -5,6 +5,7 @@ classdef AswingPlant < matlab.System
         NumModalStates    = 91
         NumPhysicalStates = 1888
         ConnectRetries    = 60
+        SocketTimeout     = 300
     end
 
     properties (Access = private)
@@ -21,7 +22,8 @@ classdef AswingPlant < matlab.System
 
             while ~connected && retries < obj.ConnectRetries
                 try
-                    obj.tcp_client = tcpclient(obj.ServerHost, obj.ServerPort, 'Timeout', 30);
+                    obj.tcp_client = tcpclient(obj.ServerHost, obj.ServerPort, ...
+                        'Timeout', obj.SocketTimeout);
                     connected = true;
                 catch
                     fprintf('[AswingPlant] Waiting for Python server... (attempt %.0f/%.0f)\n', ...
@@ -53,14 +55,27 @@ classdef AswingPlant < matlab.System
 
             write(obj.tcp_client, [hdr, mbytes]);
 
-            rh = read(obj.tcp_client, 4, 'uint8');
+            try
+                rh = read(obj.tcp_client, 4, 'uint8');
+            catch ME
+                error(['Timed out waiting for the first response from Python. ' ...
+                    'The TCP bridge is connected, but WingLoop/ASWING has not ' ...
+                    'sent a state packet yet. Check wingloop_python_server.log. ' ...
+                    'Original error: %s'], ME.message);
+            end
 
             rlen = uint32(rh(1)) * 16777216 + ...
                    uint32(rh(2)) * 65536 + ...
                    uint32(rh(3)) * 256 + ...
                    uint32(rh(4));
 
-            raw_data = read(obj.tcp_client, double(rlen), 'uint8');
+            try
+                raw_data = read(obj.tcp_client, double(rlen), 'uint8');
+            catch ME
+                error(['Timed out while receiving a Python state packet. ' ...
+                    'Check wingloop_python_server.log. Original error: %s'], ...
+                    ME.message);
+            end
             data = jsondecode(char(raw_data));
 
             z_raw = data.z;

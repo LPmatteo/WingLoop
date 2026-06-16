@@ -10,18 +10,19 @@ class UserController:
         #os.environ['WINGLOOP_N'] = "510" 
         
         print("\n" + "="*50)
-        print("[TCP Controller] TCP bridge server started.")
+        print("[TCP Controller] TCP bridge server started.", flush=True)
         
         self.srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.srv.bind(('0.0.0.0', self.PORT))
         self.srv.listen(1)
         
-        print(f"[TCP Controller] Listening on port {self.PORT}...")
-        print("[TCP Controller] ---> PRESS 'RUN' IN SIMULINK NOW! <---")
+        print(f"[TCP Controller] Listening on port {self.PORT}...", flush=True)
+        print("[TCP Controller] ---> PRESS 'RUN' IN SIMULINK NOW! <---", flush=True)
         
         self.conn, self.addr = self.srv.accept()
         self.conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        print(f"[TCP Controller] Simulink connected from {self.addr}.", flush=True)
 
     def step(self, instantaneous_state, Dt):
         self.simulationtime += Dt
@@ -38,11 +39,13 @@ class UserController:
         z_mod = [0.0] * 91
 
         if int(self.simulationtime/Dt) % 50 == 0:
-            print(f"[Python Radar] t={self.simulationtime:.2f}s | Max Y={max_val:.6f}")
+            print(f"[Python Radar] t={self.simulationtime:.2f}s | Max Y={max_val:.6f}", flush=True)
 
         # 2. Send data to Simulink.
         resp = json.dumps({'z': z_mod, 'y': y_phys}).encode()
         try:
+            if self.simulationtime <= Dt:
+                print("[TCP Controller] Sending first state packet to Simulink.", flush=True)
             self.conn.sendall(len(resp).to_bytes(4, 'big') + resp)
             
             # 3. Receive commands from Simulink.
