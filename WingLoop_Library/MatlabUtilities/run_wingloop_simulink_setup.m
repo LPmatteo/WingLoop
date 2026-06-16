@@ -105,11 +105,14 @@ function model_name = run_wingloop_simulink_setup( ...
 
     %% --- Load Simulink Model ---
     model_path = fullfile(simulink_case_path, model_file);
-    if exist(model_path, 'file') ~= 2
-        error('Simulink model file not found: %s', model_path);
+    try
+        load_system(model_path);
+    catch ME
+        folder_listing = list_folder_for_error(simulink_case_path);
+        error(['Unable to load Simulink model file:\n%s\n\n' ...
+            'Folder contents:\n%s\n\nOriginal MATLAB error:\n%s'], ...
+            model_path, folder_listing, ME.message);
     end
-
-    load_system(model_path);
     model_name = resolve_loaded_model_name(model_name, model_path);
     set_param(model_name, 'InitFcn', 'WL_init_callback');
 
@@ -135,6 +138,23 @@ function model_name = run_wingloop_simulink_setup( ...
     fprintf('\n==================================================\n');
     fprintf('Setup complete. Starting Simulink simulation...\n');
     fprintf('==================================================\n\n');
+end
+
+
+function folder_listing = list_folder_for_error(folder_path)
+    entries = dir(folder_path);
+    if isempty(entries)
+        folder_listing = '<folder not found or not readable>';
+        return;
+    end
+
+    names = string({entries.name});
+    names = names(names ~= "." & names ~= "..");
+    if isempty(names)
+        folder_listing = '<empty folder>';
+    else
+        folder_listing = strjoin(names, newline);
+    end
 end
 
 
