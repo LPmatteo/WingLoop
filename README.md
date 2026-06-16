@@ -78,7 +78,6 @@ WingLoop/
 |   |   |-- run_wingloop_simulink_setup.m
 |   |   |-- wingloop_profile.py
 |   |   `-- WL_init_callback.m
-|   |-- test_files/
 |   `-- wingloop_testrun/
 |       |-- aswing_geometry/
 |       |   |-- t_tail_HALE.asw
@@ -96,6 +95,10 @@ WingLoop/
 |               `-- sim_config.json
 ```
 Generated files such as `input`, `output`, `sim_results.*`, `slprj/`, `__pycache__/`, and `.slxc` files should not be committed to the repository.
+
+`setup_aswing_case_from_old.sh` is an optional migration helper. It copies an
+existing ASWING working folder and geometry file into `aswing_geometry/`; it is
+not required for normal Simulink runs once the case files are already present.
 
 ---
 
