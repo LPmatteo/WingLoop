@@ -3,7 +3,7 @@
   <img src="./docs/wingLoop_image.jpg" alt="WingLoop GUI during a simulation run" width="100%" />
 </div>
 
-**Authors:** Leonardo Avoni; Matteo Alfonso Incarbone  
+**Authors:** Leonardo Avoni; Matteo Alfonso Incarbone (**Simulink V2**)
 **Contacts:** avonileonardo@gmail.com; lpmatteo241@gmail.com  
 **Last Modified:** 10/03/2026  
 **Platform:** Ubuntu  
