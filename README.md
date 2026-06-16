@@ -58,43 +58,43 @@ WingLoop provides:
 
 ```text
 WingLoop/
-│
-├── README.md
-│
-└── WingLoop_Library/
-    │
-    ├── WingLoop.py
-    ├── Aswing_Director.py
-    ├── PyControl.py
-    ├── PyControl_IO.py
-    ├── PyControl_Plot.py
-    ├── ASW_Helpers.py
-    ├── __init__.py
-    │
-    ├── test_files/
-    │
-    └── wingloop_testrun/
-        │
-        ├── controller_wingloop.py
-        ├── sim_config.json
-        ├── python_inputs.txt
-        │
-        ├── aswing_geometry/
-        │   └── t_tail_HALE.asw
-        │
-        ├── aswing_geometry/
-        │   ├── t_tail_HALE.pnt
-        │   ├── t_tail_HALE.set
-        │   ├── t_tail_HALE.state
-        │   └── gust_H40.gust
-        │
-        └── simulink_controller_2/
-            ├── WingLoop_Simulink_Testrun.m
-            ├── WingLoop_Simulink_Testrun_simulink.slx
-            ├── AswingPlant.m
-            └── Bridge_Simulink.py
+|-- README.md
+|-- docs/
+|-- WingLoop_Library/
+|   |-- ASW_Helpers.py
+|   |-- Aswing_Director.py
+|   |-- PyControl.py
+|   |-- PyControl_IO.py
+|   |-- PyControl_Plot.py
+|   |-- PyControl_additional.py
+|   |-- WingLoop.py
+|   |-- __init__.py
+|   |-- icon/
+|   |   `-- wingloop_icon.png
+|   |-- MatlabUtilities/
+|   |   |-- AswingPlant.m
+|   |   |-- Bridge_Simulink.py
+|   |   |-- controller_wingloop.py
+|   |   |-- run_wingloop_simulink_setup.m
+|   |   |-- wingloop_profile.py
+|   |   `-- WL_init_callback.m
+|   |-- test_files/
+|   `-- wingloop_testrun/
+|       |-- aswing_geometry/
+|       |   |-- t_tail_HALE.asw
+|       |   |-- t_tail_HALE.pnt
+|       |   |-- t_tail_HALE.set
+|       |   |-- t_tail_HALE.state
+|       |   `-- gust_H40.gust
+|       |-- setup_aswing_case_from_old.sh
+|       `-- simulink_controller_2/
+|           |-- WingLoop_Controller.slx
+|           |-- WingLoop_Simulink_Testrun.m
+|           |-- wingloop_python_server.log
+|           `-- config/
+|               |-- python_inputs.txt
+|               `-- sim_config.json
 ```
-
 Generated files such as `input`, `output`, `sim_results.*`, `slprj/`, `__pycache__/`, and `.slxc` files should not be committed to the repository.
 
 ---

@@ -81,6 +81,8 @@ function model_name = run_wingloop_simulink_setup( ...
     fprintf(' ]\n');
 
     %% --- Write Python Configuration JSON ---
+    aswing_case_folder_python = path_for_python_server(aswing_case_folder);
+
     config_data = struct( ...
         'T_sim', T_sim, ...
         'Dt_asw', Dt_asw, ...
@@ -90,7 +92,7 @@ function model_name = run_wingloop_simulink_setup( ...
         'STATE_FILE', STATE_FILE, ...
         'GUST_FILE', GUST_FILE, ...
         'ASWING_ALIAS', alias_aswing, ...
-        'ASWING_CASE_DIR', aswing_case_folder ...
+        'ASWING_CASE_DIR', aswing_case_folder_python ...
     );
 
     fid = fopen(json_path, 'w');
@@ -138,6 +140,28 @@ function model_name = run_wingloop_simulink_setup( ...
     fprintf('\n==================================================\n');
     fprintf('Setup complete. Starting Simulink simulation...\n');
     fprintf('==================================================\n\n');
+end
+
+
+function path_out = path_for_python_server(path_in)
+    path_out = char(path_in);
+
+    if ~ispc
+        return;
+    end
+
+    path_slash = strrep(path_out, '\', '/');
+
+    token = regexp(path_slash, '^//wsl\.localhost/[^/]+(/.*)$', ...
+        'tokens', 'once');
+    if isempty(token)
+        token = regexp(path_slash, '^//wsl\$/[^/]+(/.*)$', ...
+            'tokens', 'once');
+    end
+
+    if ~isempty(token)
+        path_out = token{1};
+    end
 end
 
 

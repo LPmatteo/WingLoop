@@ -25,6 +25,24 @@ def ask_yes_no(prompt, default=False):
     return answer in {"y", "yes", "s", "si"}
 
 
+def normalize_wsl_path(path_value):
+    """Convert Windows WSL UNC paths to Linux paths when running in WSL."""
+    if not path_value:
+        return path_value
+
+    path_text = str(path_value).strip()
+    path_slash = path_text.replace("\\", "/")
+
+    prefixes = ("//wsl.localhost/", "//wsl$/")
+    for prefix in prefixes:
+        if path_slash.lower().startswith(prefix):
+            parts = path_slash.split("/", 4)
+            if len(parts) >= 5:
+                return "/" + parts[4]
+
+    return path_text
+
+
 def main():
     start_time_total = time.time()
 
@@ -67,7 +85,9 @@ def main():
             STATE_FILE = config.get("STATE_FILE", STATE_FILE)
             GUST_FILE = config.get("GUST_FILE", GUST_FILE)
             ASWING_ALIAS = config.get("ASWING_ALIAS", ASWING_ALIAS)
-            ASWING_CASE_DIR = config.get("ASWING_CASE_DIR", ASWING_CASE_DIR)
+            ASWING_CASE_DIR = normalize_wsl_path(
+                config.get("ASWING_CASE_DIR", ASWING_CASE_DIR)
+            )
 
             print(f"[WingLoop] Parameters loaded from {config_path}: T_sim={T_sim}s | Dt={Dt}s")
             print("[WingLoop] ASWING case loaded from configuration:")
