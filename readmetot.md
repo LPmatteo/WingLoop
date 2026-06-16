@@ -1,4 +1,4 @@
-﻿## WingLoop 2.0
+﻿## WingLoop 3.0
 <div align="center">
   <img src="./docs/wingLoop_image.jpg" alt="WingLoop GUI during a simulation run" width="100%" />
 </div>
