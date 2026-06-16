@@ -56,6 +56,7 @@ function run_wingloop_simulink_setup( ...
     json_path = fullfile(wingloop_testrun_path, 'sim_config.json');
 
     addpath(simulink_controller_path);
+    assignin('base', 'WL_TestrunPath', wingloop_testrun_path);
 
     %% --- Write Python Configuration JSON ---
     config_data = struct( ...
@@ -80,6 +81,7 @@ function run_wingloop_simulink_setup( ...
 
     %% --- Load Simulink Model ---
     load_system(model_file);
+    set_param(model_name, 'InitFcn', 'WL_init_callback');
 
     %% --- Configure AswingPlant Block ---
     aswing_block_path = [model_name '/Non-Linear Plant (WingLoop)/MATLAB System1'];
