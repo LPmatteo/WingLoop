@@ -17,7 +17,7 @@ WingLoop is a closed-loop control framework that extends the capabilities of [AS
 
 The simulation advances in a time-marching loop, either step by step or in chunks of *K* timesteps. Between iterations, the simulation state is passed to Python — and then to MATLAB or Simulink if needed — where the control laws are computed. The resulting control inputs are returned to ASWING for the next timestep, enabling closed-loop simulations with arbitrary controllers.
 
-This merged README preserves the original WingLoop documentation and also documents the current Simulink workflow developed by Matteo Alfonso Incarbone, referred to here as **Simulink V2**. In the Simulink family, the best results so far have been obtained with Simulink V2: it improves execution time and strengthens the MATLAB-Simulink-ASWING connection compared with the older Simulink variants described below, including Simulink with GUI, Simulink without GUI, and FMU-based workflows with or without recompilation.
+In the following, Wingloop 3.0 is presented, including an added feature referred to here as **Simulink V2**. In the Simulink family, the best results so far have been obtained with Simulink V2: it improves execution time and strengthens the MATLAB-Simulink-ASWING connection compared with the older Simulink variants described below, including Simulink with GUI, Simulink without GUI, and FMU-based workflows with or without recompilation.
 
 The original benchmark and controller-backend discussion are kept first. A dedicated **Simulink V2 Current Implementation** section is provided afterwards, explaining the current repository layout and how the active Simulink V2 workflow is configured and executed.
 
