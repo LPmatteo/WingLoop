@@ -6,7 +6,7 @@
 
 **Author:** Matteo Alfonso Incarbone  
 **Contact:** lpmatteo241@gmail.com  
-**Platform:** Windows + WSL  
+**Platform:** Windows + WSL / Linux
 **Tested with:** ASWING 5.98  
 
 ---
