@@ -7,7 +7,7 @@
 
 **Contacts:** avonileonardo@gmail.com; lpmatteo241@gmail.com  
 **Last Modified:** 10/03/2026  
-**Platform:** Ubuntu  
+**Platform:** Ubuntu  / Windows + WSL
 **Tested with:** ASWING 5.98  
 
 ---
