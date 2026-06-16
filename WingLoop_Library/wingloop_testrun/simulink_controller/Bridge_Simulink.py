@@ -10,15 +10,15 @@ class UserController:
         #os.environ['WINGLOOP_N'] = "510" 
         
         print("\n" + "="*50)
-        print("[TCP Controller] Modulo Server TCP (Bridge) avviato!")
+        print("[TCP Controller] TCP bridge server started.")
         
         self.srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.srv.bind(('0.0.0.0', self.PORT))
         self.srv.listen(1)
         
-        print(f"[TCP Controller] In ascolto sulla porta {self.PORT}...")
-        print("[TCP Controller] ---> PREMI 'RUN' SU SIMULINK ORA! <---")
+        print(f"[TCP Controller] Listening on port {self.PORT}...")
+        print("[TCP Controller] ---> PRESS 'RUN' IN SIMULINK NOW! <---")
         
         self.conn, self.addr = self.srv.accept()
         self.conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
@@ -26,7 +26,7 @@ class UserController:
     def step(self, instantaneous_state, Dt):
         self.simulationtime += Dt
         
-        # 1. ESTRAZIONE E RADAR
+        # 1. State extraction and lightweight diagnostics.
         try:
             arr = np.array(instantaneous_state).flatten()
             y_phys = arr.tolist()
@@ -38,31 +38,31 @@ class UserController:
         z_mod = [0.0] * 91
 
         if int(self.simulationtime/Dt) % 50 == 0:
-            print(f"[Python Radar] t={self.simulationtime:.2f}s | Valore Massimo Y={max_val:.6f}")
+            print(f"[Python Radar] t={self.simulationtime:.2f}s | Max Y={max_val:.6f}")
 
-        # 2. INVIAMO A SIMULINK
+        # 2. Send data to Simulink.
         resp = json.dumps({'z': z_mod, 'y': y_phys}).encode()
         try:
             self.conn.sendall(len(resp).to_bytes(4, 'big') + resp)
             
-            # 3. RICEVIAMO I COMANDI DA SIMULINK
+            # 3. Receive commands from Simulink.
             hdr = b''
             while len(hdr) < 4: 
                 chunk = self.conn.recv(4 - len(hdr))
-                if not chunk: raise ConnectionError("Simulink ha chiuso la connessione.")
+                if not chunk: raise ConnectionError("Simulink closed the connection.")
                 hdr += chunk
             mlen = int.from_bytes(hdr, 'big')
             
             raw_data = b''
             while len(raw_data) < mlen: 
                 chunk = self.conn.recv(mlen - len(raw_data))
-                if not chunk: raise ConnectionError("Simulink ha chiuso la connessione.")
+                if not chunk: raise ConnectionError("Simulink closed the connection.")
                 raw_data += chunk
             data = json.loads(raw_data.decode())
             
             u = data.get('u', [0.0, -6.638, 0.0, 0.0, 23.647, 23.647])
         except Exception as e:
-            # Se Simulink si scollega, diciamo a WingLoop di mantenere l'ultimo comando
+            # If Simulink disconnects, keep the latest safe command.
             u = [0.0, -6.638, 0.0, 0.0, 23.647, 23.647]
 
         return {"F1":u[0],"F2":u[1],"F3":u[2],"F4":u[3],"E1":u[4],"E2":u[5]}

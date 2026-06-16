@@ -4,6 +4,7 @@ classdef AswingPlant < matlab.System
         ServerPort        = 5005
         NumModalStates    = 91
         NumPhysicalStates = 1888
+        ConnectRetries    = 60
     end
 
     properties (Access = private)
@@ -18,19 +19,21 @@ classdef AswingPlant < matlab.System
             connected = false;
             retries = 0;
 
-            while ~connected && retries < 10
+            while ~connected && retries < obj.ConnectRetries
                 try
                     obj.tcp_client = tcpclient(obj.ServerHost, obj.ServerPort, 'Timeout', 30);
                     connected = true;
                 catch
-                    fprintf('[AswingPlant] Waiting for Python server... (attempt %.0f/10)\n', retries + 1);
+                    fprintf('[AswingPlant] Waiting for Python server... (attempt %.0f/%.0f)\n', ...
+                        retries + 1, obj.ConnectRetries);
                     pause(1);
                     retries = retries + 1;
                 end
             end
 
             if ~connected
-                error('Timeout. Unable to connect to Python. Make sure the background script started correctly.');
+                error(['Timeout. Unable to connect to Python. ' ...
+                    'Check wingloop_python_server.log in the wingloop_testrun folder.']);
             end
 
             obj.step_count = 0;
