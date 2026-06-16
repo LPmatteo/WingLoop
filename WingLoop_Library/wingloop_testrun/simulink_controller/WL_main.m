@@ -46,6 +46,11 @@ u_trim = [0, F2ref, F3ref, 0, E2ref, E2ref];
 model_name = 'WL_test';
 model_file = 'WL_test.slx';
 
+%% --- Python / Conda Environment ---
+% Put here the conda environment used to run controller_wingloop.py.
+% Leave empty to use the default environment name: WINGLOOP.
+wingloop_env = "WINGLOOP";
+
 %% ========================================================================
 %  AUTOMATIC SETUP AND SIMULATION
 %  Do not modify this section unless you are changing the WingLoop interface.
@@ -55,11 +60,10 @@ run_wingloop_simulink_setup( ...
     T_sim, Dt_asw, Dt_sim, Ts_control, tau, t_int, ...
     ASW_FILE, PNT_FILE, SET_FILE, STATE_FILE, GUST_FILE, ...
     ROM, FullModel, u_trim, ...
-    model_name, model_file ...
+    model_name, model_file, wingloop_env ...
 );
 
 sim(model_file);
-
 
 
 

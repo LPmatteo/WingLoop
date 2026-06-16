@@ -6,7 +6,7 @@ function run_wingloop_simulink_setup( ...
     T_sim, Dt_asw, Dt_sim, Ts_control, tau, t_int, ...
     ASW_FILE, PNT_FILE, SET_FILE, STATE_FILE, GUST_FILE, ...
     ROM, FullModel, u_trim, ...
-    model_name, model_file ...
+    model_name, model_file, wingloop_env ...
 )
 
     fprintf('\n==================================================\n');
@@ -29,6 +29,14 @@ function run_wingloop_simulink_setup( ...
     fprintf('SET file  : %s\n', SET_FILE);
     fprintf('STATE file: %s\n', STATE_FILE);
     fprintf('GUST file : %s\n', GUST_FILE);
+
+    %% --- Print Python Configuration ---
+    if nargin < 17
+        wingloop_env = "WINGLOOP";
+    end
+    wingloop_env = normalize_wingloop_env(wingloop_env);
+    fprintf('\n--- PYTHON CONFIGURATION ---\n');
+    fprintf('Conda env : %s\n', wingloop_env);
 
     %% --- Print Model Dimensions ---
     NumModalStates    = ROM.n_modal;
@@ -57,6 +65,7 @@ function run_wingloop_simulink_setup( ...
 
     addpath(simulink_controller_path);
     assignin('base', 'WL_TestrunPath', wingloop_testrun_path);
+    assignin('base', 'WL_CondaEnv', wingloop_env);
 
     %% --- Write Python Configuration JSON ---
     config_data = struct( ...
@@ -105,4 +114,18 @@ function run_wingloop_simulink_setup( ...
     fprintf('\n==================================================\n');
     fprintf('Setup complete. Starting Simulink simulation...\n');
     fprintf('==================================================\n\n');
+end
+
+
+function wingloop_env = normalize_wingloop_env(wingloop_env)
+    if nargin < 1 || isempty(wingloop_env)
+        wingloop_env = "WINGLOOP";
+    end
+
+    wingloop_env = strtrim(string(wingloop_env));
+    if strlength(wingloop_env) == 0
+        wingloop_env = "WINGLOOP";
+    end
+
+    wingloop_env = char(wingloop_env);
 end

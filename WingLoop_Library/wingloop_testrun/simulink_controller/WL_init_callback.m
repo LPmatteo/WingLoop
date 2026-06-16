@@ -43,7 +43,8 @@ function WL_init_callback()
 
     clear cleanup_obj;
 
-    start_python_server(percorso);
+    conda_env = resolve_conda_env();
+    start_python_server(percorso, conda_env);
 end
 
 
@@ -64,18 +65,34 @@ function percorso = resolve_wingloop_testrun_path()
 end
 
 
-function start_python_server(percorso)
+function conda_env = resolve_conda_env()
+    if evalin('base', 'exist(''WL_CondaEnv'', ''var'')')
+        conda_env = evalin('base', 'WL_CondaEnv');
+    else
+        conda_env = "WINGLOOP";
+    end
+
+    conda_env = strtrim(string(conda_env));
+    if strlength(conda_env) == 0
+        conda_env = "WINGLOOP";
+    end
+
+    conda_env = char(conda_env);
+end
+
+
+function start_python_server(percorso, conda_env)
     if ispc
         percorso_wsl = windows_path_to_wsl_path(percorso);
         cmd_wsl = sprintf(['start "WingLoop Python Server" wsl -e bash -ic ' ...
-            '"cd %s && conda activate WINGLOOP && ' ...
+            '"cd %s && conda activate %s && ' ...
             'python3 controller_wingloop.py < python_inputs.txt; exec bash"'], ...
-            shell_quote_for_bash(percorso_wsl));
+            shell_quote_for_bash(percorso_wsl), shell_quote_for_bash(conda_env));
         system(cmd_wsl);
     else
-        cmd_unix = sprintf(['bash -ic "cd %s && conda activate WINGLOOP && ' ...
+        cmd_unix = sprintf(['bash -ic "cd %s && conda activate %s && ' ...
             'python3 controller_wingloop.py < python_inputs.txt" &'], ...
-            shell_quote_for_bash(percorso));
+            shell_quote_for_bash(percorso), shell_quote_for_bash(conda_env));
         system(cmd_unix);
     end
 end
