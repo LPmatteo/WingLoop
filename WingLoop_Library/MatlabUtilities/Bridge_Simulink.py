@@ -63,16 +63,29 @@ class UserController:
                 raw_data += chunk
             data = json.loads(raw_data.decode())
 
+            if data.get('cmd') == 'close':
+                print("[TCP Controller] Shutdown requested by Simulink.", flush=True)
+                self.close()
+                raise SystemExit(0)
+
             u = data.get('u', [0.0, -6.638, 0.0, 0.0, 23.647, 23.647])
         except Exception as e:
-            # If Simulink disconnects, keep the latest safe command.
-            u = [0.0, -6.638, 0.0, 0.0, 23.647, 23.647]
+            print(f"[TCP Controller] Simulink bridge closed: {e}", flush=True)
+            self.close()
+            raise SystemExit(0)
 
         return {"F1":u[0],"F2":u[1],"F3":u[2],"F4":u[3],"E1":u[4],"E2":u[5]}
 
-    def __del__(self):
+    def close(self):
         try:
-            self.conn.close()
+            if hasattr(self, 'conn'):
+                self.conn.close()
+        except:
+            pass
+        try:
             self.srv.close()
         except:
             pass
+
+    def __del__(self):
+        self.close()
