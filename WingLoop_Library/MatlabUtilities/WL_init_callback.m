@@ -143,10 +143,12 @@ function start_python_server(simulink_case_path, matlab_utilities_path, ...
 
         launch_cmd = build_python_launch_command(case_path_wsl, ...
             controller_file_wsl, config_file_wsl, input_file_wsl, conda_env);
-        launch_cmd = sprintf('%s > %s 2>&1; exec bash', ...
-            launch_cmd, shell_quote_for_bash(log_file_wsl));
-        cmd_wsl = sprintf('start "WingLoop Python Server" wsl -e bash -lc %s', ...
-            shell_quote_for_cmd(launch_cmd));
+        launch_script = fullfile(config_folder, 'launch_wingloop_python_server.sh');
+        launch_script_wsl = windows_path_to_wsl_path(launch_script);
+        write_launch_script(launch_script, launch_cmd, log_file_wsl);
+
+        cmd_wsl = sprintf('start "WingLoop Python Server" wsl -e bash %s', ...
+            shell_quote_for_cmd(launch_script_wsl));
         run_system_from_local_folder(cmd_wsl);
     else
         launch_cmd = build_python_launch_command(simulink_case_path, ...
@@ -155,6 +157,22 @@ function start_python_server(simulink_case_path, matlab_utilities_path, ...
             shell_quote_for_bash(launch_cmd), shell_quote_for_bash(log_file));
         system(cmd_unix);
     end
+end
+
+
+function write_launch_script(script_file, launch_cmd, log_file_wsl)
+    fid = fopen(script_file, 'w');
+    if fid < 0
+        error('Unable to open launch script for writing: %s', script_file);
+    end
+    cleanup_obj = onCleanup(@() fclose(fid));
+
+    fprintf(fid, '#!/usr/bin/env bash\n');
+    fprintf(fid, 'set -u\n');
+    fprintf(fid, '%s > %s 2>&1\n', ...
+        launch_cmd, shell_quote_for_bash(log_file_wsl));
+
+    clear cleanup_obj;
 end
 
 
