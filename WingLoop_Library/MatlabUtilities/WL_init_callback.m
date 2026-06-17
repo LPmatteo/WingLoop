@@ -32,7 +32,6 @@ function WL_init_callback()
     end
     cleanup_obj = onCleanup(@() fclose(fid));
 
-    fprintf(fid, '1\n'); % Controller choice: 1 (LQI).
     if strcmp(scelta_gust, 'Yes')
         fprintf(fid, 'y\n');
     else
