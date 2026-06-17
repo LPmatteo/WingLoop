@@ -228,12 +228,11 @@ end
 
 function path_wsl = windows_path_to_wsl_path(path_in)
     path_in = char(strtrim(string(path_in)));
-    if startsWith(string(path_in), "/") && ~startsWith(string(path_in), "//")
-        path_wsl = path_in;
+    path_wsl = strrep(path_in, '\', '/');
+
+    if startsWith(string(path_wsl), "/") && ~startsWith(string(path_wsl), "//")
         return;
     end
-
-    path_wsl = strrep(path_in, '\', '/');
 
     token = regexp(path_wsl, '^//wsl\.localhost/[^/]+(/.*)$', ...
         'tokens', 'once');
