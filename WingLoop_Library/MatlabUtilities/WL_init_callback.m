@@ -147,7 +147,7 @@ function start_python_server(simulink_case_path, matlab_utilities_path, ...
             launch_cmd, shell_quote_for_bash(log_file_wsl));
         cmd_wsl = sprintf('start "WingLoop Python Server" wsl -e bash -lc %s', ...
             shell_quote_for_cmd(launch_cmd));
-        system(cmd_wsl);
+        run_system_from_local_folder(cmd_wsl);
     else
         launch_cmd = build_python_launch_command(simulink_case_path, ...
             controller_file, config_file, input_file, conda_env);
@@ -155,6 +155,25 @@ function start_python_server(simulink_case_path, matlab_utilities_path, ...
             shell_quote_for_bash(launch_cmd), shell_quote_for_bash(log_file));
         system(cmd_unix);
     end
+end
+
+
+function run_system_from_local_folder(cmd)
+    if ~ispc
+        system(cmd);
+        return;
+    end
+
+    old_folder = pwd;
+    cleanup_obj = [];
+
+    if startsWith(string(old_folder), "\\")
+        cd(tempdir);
+        cleanup_obj = onCleanup(@() cd(old_folder));
+    end
+
+    system(cmd);
+    clear cleanup_obj;
 end
 
 
