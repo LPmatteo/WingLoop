@@ -39,7 +39,22 @@ function WL_init_callback()
     end
 
     if strcmp(scelta_video, 'Yes')
-        fprintf(fid, 'y\ngif\nmedium\nY\n');
+        scelta_camera = questdlg('Enable ASWING camera movement in the video?', ...
+            'Video Plot Option', 'Yes', 'No', 'Yes');
+        if isempty(scelta_camera)
+            scelta_camera = 'Yes';
+        end
+
+        scelta_wake = questdlg('Enable ASWING wake plotting in the video?', ...
+            'Video Plot Option', 'Yes', 'No', 'No');
+        if isempty(scelta_wake)
+            scelta_wake = 'No';
+        end
+
+        fprintf(fid, 'y\ngif\nmedium\n');
+        write_yes_no(fid, scelta_camera);
+        write_yes_no(fid, scelta_wake);
+        fprintf(fid, 'Y\n');
     else
         fprintf(fid, 'n\n');
     end
@@ -49,6 +64,15 @@ function WL_init_callback()
     conda_env = resolve_conda_env();
     start_python_server(simulink_case_path, matlab_utilities_path, ...
         config_folder, conda_env);
+end
+
+
+function write_yes_no(fid, answer)
+    if strcmp(answer, 'Yes')
+        fprintf(fid, 'y\n');
+    else
+        fprintf(fid, 'n\n');
+    end
 end
 
 

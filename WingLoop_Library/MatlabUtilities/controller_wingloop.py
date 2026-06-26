@@ -43,6 +43,148 @@ def normalize_wsl_path(path_value):
     return path_text
 
 
+def _is_number(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _extract_numeric_series(value):
+    if isinstance(value, list):
+        series = []
+        for item in value:
+            if _is_number(item):
+                series.append(float(item))
+            elif isinstance(item, list):
+                nums = [float(x) for x in item if _is_number(x)]
+                if nums:
+                    series.append(nums[0])
+            elif isinstance(item, dict):
+                for candidate in ("value", "data", "y", "Y"):
+                    if candidate in item and _is_number(item[candidate]):
+                        series.append(float(item[candidate]))
+                        break
+        return series
+
+    if isinstance(value, dict):
+        for candidate in ("values", "data", "Value", "Data"):
+            if candidate in value:
+                return _extract_numeric_series(value[candidate])
+
+    return []
+
+
+def _find_series(data, names):
+    lower_map = {str(k).lower().replace(" ", "").replace("_", ""): k for k in data.keys()}
+    for name in names:
+        key = lower_map.get(name.lower().replace(" ", "").replace("_", ""))
+        if key is not None:
+            series = _extract_numeric_series(data[key])
+            if series:
+                return key, series
+    return None, []
+
+
+def generate_fallback_video_from_json(results_json, output_mp4, Dt, max_frames=600):
+    """Create a lightweight MP4 from sim_results.json when ASWING movie export fails."""
+    if not os.path.isfile(results_json):
+        raise FileNotFoundError(f"Fallback video source not found: {results_json}")
+
+    with open(results_json, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    if not isinstance(data, dict):
+        raise RuntimeError("Fallback video expects sim_results.json to contain a JSON object.")
+
+    variables = data.get("ModelVariables", data)
+    if not isinstance(variables, dict):
+        variables = data
+
+    _, time_series = _find_series(variables, ["Time", "time", "t"])
+    _, x = _find_series(variables, ["earth X", "X", "sim_X"])
+    _, y = _find_series(variables, ["earth Y", "Y", "sim_Y"])
+    _, z = _find_series(variables, ["earth Z", "Z", "sim_Z"])
+    vx_name, vx = _find_series(variables, ["Vx", "V_x", "Velocity", "Ux", "sim_Vx"])
+    theta_name, theta = _find_series(variables, ["theta", "Elev.", "Pitch", "sim_theta"])
+
+    lengths = [len(s) for s in (x, y, z, vx, theta) if len(s) > 1]
+    if not lengths:
+        raise RuntimeError("Fallback video could not find numeric time histories in sim_results.json.")
+
+    n = min(lengths)
+    stride = max(1, int((n + max_frames - 1) // max_frames))
+    frame_indices = list(range(0, n, stride))
+    if frame_indices[-1] != n - 1:
+        frame_indices.append(n - 1)
+
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        from matplotlib.animation import FFMpegWriter
+    except Exception as exc:
+        raise RuntimeError(f"matplotlib/ffmpeg writer unavailable for fallback video: {exc}") from exc
+
+    os.makedirs(os.path.dirname(output_mp4), exist_ok=True)
+
+    def pad(series):
+        if len(series) >= n:
+            return series[:n]
+        if not series:
+            return [0.0] * n
+        return series + [series[-1]] * (n - len(series))
+
+    x = pad(x)
+    y = pad(y)
+    z = pad(z)
+    vx = pad(vx)
+    theta = pad(theta)
+    if len(time_series) >= n:
+        t = time_series[:n]
+    else:
+        t = [i * float(Dt) for i in range(n)]
+
+    fig = plt.figure(figsize=(10, 7))
+    ax_traj = fig.add_subplot(2, 1, 1)
+    ax_sig = fig.add_subplot(2, 1, 2)
+
+    fps = max(5, min(30, 1.0 / (float(Dt) * stride)))
+    writer = FFMpegWriter(fps=fps, metadata={"title": "WingLoop fallback video"})
+
+    xmin, xmax = min(x), max(x)
+    ymin, ymax = min(y), max(y)
+    zmin, zmax = min(z), max(z)
+    if xmin == xmax: xmax = xmin + 1
+    if ymin == ymax: ymax = ymin + 1
+
+    with writer.saving(fig, output_mp4, dpi=100):
+        for idx in frame_indices:
+            ax_traj.clear()
+            ax_sig.clear()
+
+            ax_traj.plot(x[:idx + 1], y[:idx + 1], color="#0072BD", linewidth=1.8)
+            ax_traj.scatter([x[idx]], [y[idx]], color="#D95319", s=35)
+            ax_traj.set_xlim(xmin, xmax)
+            ax_traj.set_ylim(ymin, ymax)
+            ax_traj.grid(True, linestyle="--", alpha=0.4)
+            ax_traj.set_xlabel("X [m]")
+            ax_traj.set_ylabel("Y [m]")
+            ax_traj.set_title(f"WingLoop fallback trajectory | t = {t[idx]:.2f} s | Z = {z[idx]:.3g} m")
+
+            if vx:
+                ax_sig.plot(t[:idx + 1], vx[:idx + 1], label=vx_name or "Vx", color="#77AC30")
+            if theta:
+                ax_sig.plot(t[:idx + 1], theta[:idx + 1], label=theta_name or "theta", color="#A2142F")
+            ax_sig.set_xlim(0, t[-1] if t[-1] > 0 else 1)
+            ax_sig.grid(True, linestyle="--", alpha=0.4)
+            ax_sig.set_xlabel("Time [s]")
+            ax_sig.legend(loc="best")
+
+            fig.tight_layout()
+            writer.grab_frame()
+
+    plt.close(fig)
+    return output_mp4
+
+
 def main():
     start_time_total = time.time()
 
@@ -118,6 +260,10 @@ def main():
 
     video_format = "gif"
     video_quality = "medium"
+    video_plot_options = {
+        "camera_movement": True,
+        "wake_plotting": False,
+    }
 
     if generate_video:
         video_format = input("Video format (gif/mp4/webp) [default: gif]: ").strip().lower()
@@ -128,7 +274,21 @@ def main():
         if video_quality not in {"low", "medium", "high"}:
             video_quality = "medium"
 
+        video_plot_options["camera_movement"] = ask_yes_no(
+            "Enable ASWING camera movement in the video? (y/n): ",
+            default=True,
+        )
+        video_plot_options["wake_plotting"] = ask_yes_no(
+            "Enable ASWING wake plotting in the video? (y/n): ",
+            default=False,
+        )
+
         print(f"[Video] Output format: {video_format} | quality: {video_quality}")
+        print(
+            "[Video] ASWING plot options: "
+            f"camera_movement={video_plot_options['camera_movement']} | "
+            f"wake_plotting={video_plot_options['wake_plotting']}"
+        )
 
     # ---------------------------------------------------------------------
     # Simulink controller setup
@@ -265,6 +425,35 @@ def main():
     if generate_video:
         print("\n" + "=" * 50)
         print("[Video] Starting video generation...")
+        gif_target_duration = float(os.environ.get("WINGLOOP_GIF_TARGET_DURATION", "10"))
+        gif_target_fps = float(os.environ.get("WINGLOOP_GIF_TARGET_FPS", "15"))
+        default_max_video_frames = int(gif_target_duration * gif_target_fps) if video_format == "gif" else 600
+        max_video_frames = int(os.environ.get("WINGLOOP_VIDEO_MAX_FRAMES", str(default_max_video_frames)))
+        max_video_frames = max(50, max_video_frames)
+        video_timeout = float(os.environ.get("WINGLOOP_VIDEO_PS_TIMEOUT", "60"))
+        video_chunk_duration = float(os.environ.get("WINGLOOP_VIDEO_CHUNK_DURATION", "10"))
+        video_chunk_duration = max(Dt, min(video_chunk_duration, 10.0))
+        movie_speed_factor = float(
+            os.environ.get(
+                "WINGLOOP_VIDEO_SPEED_FACTOR",
+                str(max(1.0, float(T_sim) / 5.0)),
+            )
+        )
+
+        if video_format == "gif":
+            if video_quality != "high":
+                print("[Video] GIF export selected: using high quality preview settings.")
+                video_quality = "high"
+            print(
+                f"[Video] GIF target: duration <= {gif_target_duration:.1f}s, "
+                f"about {gif_target_fps:.1f} fps, max_frames={max_video_frames}."
+            )
+        elif T_sim > 60 and video_quality != "low":
+            print("[Video] Long simulation detected: using low quality for faster export.")
+            video_quality = "low"
+        elif T_sim > 20 and video_quality == "high":
+            print("[Video] Long simulation detected: using medium quality for faster export.")
+            video_quality = "medium"
 
         try:
             shutil.copy2(aswing_geometry_file_abs, aswing_working_dir)
@@ -289,9 +478,14 @@ def main():
                 input_files=[results_state_file],
                 video_folder=os.path.join(aswing_working_dir, "videos"),
                 aswing_alias=ASWING_ALIAS,
+                movie_time_limit=T_sim,
+                Dt=Dt,
+                movie_chunk_duration=video_chunk_duration,
+                movie_speed_factor=movie_speed_factor,
+                plot_options=video_plot_options,
                 stable_duration=4.0,
                 poll_interval=1.0,
-                timeout=300,
+                timeout=video_timeout,
             )
 
             print(f"[Video] PostScript generated: {ps_path}")
@@ -303,6 +497,8 @@ def main():
                 transpose=1,
                 quality=video_quality,
                 keep_frames=False,
+                max_frames=max_video_frames,
+                target_duration=gif_target_duration if video_format == "gif" else None,
             )
 
             print(f"[Video] Video saved: {out_path}")
@@ -311,6 +507,18 @@ def main():
             print(f"[Video] Error during video generation: {exc}")
             print("[Video] Make sure ghostscript and ffmpeg are installed:")
             print("        sudo apt install ghostscript ffmpeg")
+            print("[Video] Falling back to a lightweight MP4 generated from sim_results.json...")
+
+            try:
+                fallback_mp4 = generate_fallback_video_from_json(
+                    results_json=os.path.join(aswing_working_dir, result_name + ".json"),
+                    output_mp4=os.path.join(aswing_working_dir, "videos", result_name + "_fallback.mp4"),
+                    Dt=Dt,
+                    max_frames=max_video_frames,
+                )
+                print(f"[Video] Fallback video saved: {fallback_mp4}")
+            except Exception as fallback_exc:
+                print(f"[Video] Fallback video failed: {fallback_exc}")
 
     print(f"\n[WingLoop] Total elapsed time: {time.time() - start_time_total:.2f} s")
 
